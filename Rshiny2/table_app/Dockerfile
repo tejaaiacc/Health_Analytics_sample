@@ -1,8 +1,8 @@
 FROM rocker/shiny
 
-ADD table_app /srv/shiny-server/
-ADD ../data /data
+ADD data /data
 
+COPY *.R /srv/shiny-server/
 COPY shiny.config /etc/shiny-server/shiny-server.conf
 
 RUN R -e "install.packages('DT',dependencies=TRUE, repos='http://cran.rstudio.com/')"

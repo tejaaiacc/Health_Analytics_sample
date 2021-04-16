@@ -1,12 +1,17 @@
 FROM rocker/shiny
 
-ADD table_app /srv/shiny-server/
-ADD ../data /data
+ADD data /data
 
+COPY app.R /srv/shiny-server/
 COPY shiny.config /etc/shiny-server/shiny-server.conf
 
-RUN R -e "install.packages('leaflet',dependencies=TRUE, repos='http://cran.rstudio.com/')"
-RUN R -e "install.packages('sf',dependencies=TRUE, repos='http://cran.rstudio.com/')"
+# RUN R -e "install.packages('leaflet',dependencies=TRUE, repos='http://cran.rstudio.com/')"
+# RUN R -e "install.packages('sf',dependencies=TRUE, repos='http://cran.rstudio.com/')"
+
+RUN install2.r --error \
+    sf \
+    tigris
+
 
 EXPOSE 8080
 

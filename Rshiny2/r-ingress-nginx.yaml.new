@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  name: r-ingress-nginx
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /diabetes/
+		    backend:
+              serviceName: shinyapp2
+              servicePort: 8081
+          - path: /map/
+            backend:
+              serviceName: shinyapp1
+              servicePort: 8080
+            
