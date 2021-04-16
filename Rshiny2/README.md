@@ -34,17 +34,43 @@ docker run --rm -p 8081:8081 gcr.io/$PROJECTID/shinytab:0.1
 ```
 
 # PART B - Deployment 
+1. Create cluster
+```
+gcloud container clusters create r-cluster --num-nodes=2
+gcloud container clusters get-credentials r-cluster
+```
+2. Create deployment for images
+```
+kubectl create deployment shiny-map --image=gcr.io/$PROJECTID/shinymap:0.1
+kubectl create deployment shiny-table --image=gcr.io/$PROJECTID/shinytab:0.1
+kubectl get deployment
+```
+3. Expose deployment
+```
+kubectl expose deployment shiny-map --type=LoadBalancer --port 8080
+kubectl expose deployment shiny-table --type=LoadBalancer --port 8081
+kubectl get svc
+```
+4. Demo visualization
+  * Obtain external IP from last command and use https://[EXTERNAL_IP]:8080 to go to Rshiny server landing page
+  * to debug
+  ```
+  kubectl get pods
+  kubectl exec [pod_name] --stdin --tty /bin/bash
+  $ cd /var/log/shiny_server # this is set in shiny config
+  ```
+5. Delete cluster
+```
+gcloud container clusters delete r-cluster
+```
+
+# PART C - TO DO (Use Ingress and Helm/nginx)
 1. Install helm [if applicable]
 ```
 # Install nginx ingress controller uisng helm
 curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get > get_helm.sh
 chmod 700 get_helm.sh
 ./get_helm.sh
-```
-2. Create cluster
-```
-gcloud container clusters create r-cluster --num-nodes=2
-gcloud container clusters get-credentials r-cluster
 ```
 3. Set-up helm 
 ```
@@ -57,17 +83,17 @@ kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceac
 helm version
 helm ls
 # using nginx - deprecated
-#helm repo add stable https://charts.helm.sh/stable
-#helm repo update
+helm repo add stable https://charts.helm.sh/stable
+helm repo update
 
 # using newer ingress
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-helm repo update
+#helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+#helm repo update
 ```
 4. Deploy nginx Ingress Controller
 ```
-#helm install nginx-ingress stable/nginx-ingress --set rbac.create=true
-helm install ingress-nginx ingress-nginx/ingress-nginx 
+helm install nginx-ingress stable/nginx-ingress --set rbac.create=true
+#helm install ingress-nginx ingress-nginx/ingress-nginx 
 kubectl get service nginx-ingress-controller
 ```
 5. Run images
