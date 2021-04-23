@@ -1,8 +1,75 @@
+# Steps Using AWS
 
+Notes:
+ - docker images are deposited in docker hub (tejaaiacc)
 
-Steps using GCP terminal
+Instructions using AWS CLI and Console
+1. Ask DCCA IT to install AWS CLI on Windows Machine
+  ```
+  aws configure # add in information for API key 
+  aws s3 ls # list all s3 uckets
+  ```
 
-# PART A - Containerization
+2. Download [kubectl](https://dl.k8s.io/release/v1.21.0/bin/windows/amd64/kubectl.exe) 
+  * place kubectl in a directory and add that directory to the powershell env
+  ```
+  $Env:Path += ";C:\path\to\kubectl"    # replace with directory where kubectl is located 
+  ```
+
+3. [Optional] Install [eksctl as non-admin user](https://docs.chocolatey.org/en-us/choco/setup#non-administrative-install) 
+  ``` 
+  # Install chocolatey
+  Set-ExecutionPolicy Bypass -Scope Process -Force;
+  .\ChocolateyInstallNonAdmin.ps1
+  $Env:Path += ";C:\ProgramData\chocolatey\bin"  # default location of chocolatey
+  # Install eksctl
+  choco install -y eksctl
+  ```
+
+4. Create cluster using AWS console
+  - log-in to AWS console
+  - search EKS (from top-middle search bar) 
+  - Put cluster name (e.g., test_cluster) in 'Create EKS Cluster'
+  - Use default parameters including cluster service role, press Next
+  - Change 'VPC' to my-eks-vpc-stack-VPC
+  - unselect public subnets in 'Subnets'
+  - Click Next
+  - In Configure Logging, click Next
+  - Click Create (this takes about 10 minutes; status: Active) 
+
+5. Create node group with fargate using AWS Console
+  - [optional] log-in to AWS console
+  - Under EKS > clusters, click on the cluster created in step 4 (e.g., test_cluster) 
+  - Under configuration tab, click 'Compute' tab
+  - Click 'Add Fargate Profile'
+  - add name
+  - select available Pod Execution Role
+  - click Next
+  - Use 'default' for namespace, press Next
+  - press Create
+  
+6. Once the nodes are available, use Powershell to deploy and expose kubernetes services
+  ```
+  # add in directory of kubectl to env path
+  $Env:Path += ";C:\Users\user\Documents\apps;C:\ProgramData\chocolatey\bin"
+  # list all clusters available
+  aws eks list-clusters
+  # Update kubeconfig to use created cluster
+  aws eks --region us-east-1 update-kubeconfig --name test_cluster # change to appropriate cluster name
+  # deploy and expose Rshiny app 
+  kubectl create deployment shiny-map --image=docker.io/tejaaiacc/sample-shiny-map:0.1
+  kubectl expose deployment shiny-map --type=NodePort --port 8080 --name test    
+  kubectl port-forward svc/test 8080:8080
+  ```
+  On a Chrome browser, use localhost:8080 to render the Rshiny app
+
+7. To avoid additional charges, delete fargate profile and cluster 
+
+# Steps using GCP 
+
+Open up terminal in GCP
+
+### PART A - Containerization
 1. Set variables and Clone repo
 ```
 # initial set-up
@@ -33,7 +100,7 @@ docker run --rm -p 8081:8081 gcr.io/$PROJECTID/shinytab:0.1
 
 ```
 
-# PART B - Deployment 
+### PART B - Deployment 
 1. Create cluster
 ```
 gcloud container clusters create r-cluster --num-nodes=2
@@ -64,7 +131,7 @@ kubectl get svc
 gcloud container clusters delete r-cluster
 ```
 
-# PART C - TO DO (Use Ingress and Helm/nginx)
+### PART C - TO DO (Use Ingress and Helm/nginx)
 1. Install helm [if applicable]
 ```
 # Install nginx ingress controller uisng helm

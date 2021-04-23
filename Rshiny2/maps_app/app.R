@@ -9,35 +9,38 @@ library(tidyverse)
 #options(tigris_use_cache = TRUE)
 
 
-# VA counties - downloaded via the awesome tigris package
-
+# Read healthcare data 
 ships <- read.csv("/data/tmp.datastudio.a1c.csv")
-ships$zipcode <- sprintf('%05d', ships$zipcode)
-# by_zip <- db_data %>% group_by(zipcode) %>% summarise(diabetes = mean(target))
-# by_zip <- by_zip[!is.na(by_zip$zipcode), ]
+ships$zipcode <- sprintf('%05d', ships$zipcode) # ensure zipcodes are 5-digit strings 
+
+
+
+# MA counties - downloaded via the tigris package
 #shape <- tigris::zctas(cb = TRUE, starts_with = c("01", "02"), class = "sf")
 shape <-readRDS("/data/zipcodes.rds")
-# shape <- merge(shape, by_zip, by.x = 'GEOID10', by.y = 'zipcode', all.x = TRUE, all.y = FALSE)
-# data_tmp <- ships %>% group_by(zipcode) %>% summarise(diabetes = mean(target)) %>% 
-		# merge(y = ., x = {shape_parent}, by.y = 'zipcode', by.x = 'GEOID10', all.x = TRUE, all.y = FALSE) 
 
-#pal <- colorNumeric(palette = "RdYlBu",reverse=TRUE,domain = shape$diabetes)
+# Read poverty sdoh/census data 
+poverty <- read.csv("/data/census_poverty.csv")
+poverty$Zip.Code <- sprintf('%05d', poverty$Zip.Code)
+
+# merge census data with zipcode polygons
+shape <- merge(x={shape},y={poverty},by.x = 'GEOID10', by.y = 'Zip.Code', all.x = FALSE, all.y = TRUE)
 
 # Define UI 
 ui <- fluidPage(
   
   # Application title
-  titlePanel("Massachusetts Diabetes Statistics"),
-#  sidebarLayout(
-#    sidebarPanel(width = 3,
+  titlePanel("Massachusetts Uncontrolled Diabetes Statistics"),
      fluidRow(
        column(3,
               sliderInput("age_f","Age",min=18,max=75,value=c(18,75) )),
-#                 numericInput("age_f", label = h5("Minimum age"), value = 18)),
        column(4,
               checkboxGroupInput("sex_f", "Select Gender", 
                    choices = c("F","M"), selected = c("F","M") )
                  ),
+	   column(3,
+              sliderInput("poverty_f","Poverty Level",min=0.0,max=1.0,c(0.0,1.0))
+              ),
   # Top panel with county name
   verticalLayout(
     
@@ -52,47 +55,49 @@ ui <- fluidPage(
 
 # Define server logic       
 server <- function(input, output) {
-   # Sex_Select <- reactive({ 
-    # if(input$checkbox){"Coupon"}
-      # else {NULL}  
-  # })
 
-  
    map_data_react <- reactive({
-     
-     if (is.null(input$sex_f)) {
-       tmp_shape <- shape %>%
-         add_column(diabetes = NA)
-       return(tmp_shape)
-     } else {
-     
-    tmp_shape<- ships %>% dplyr::filter(age >= input$age_f[1],age <= input$age_f[2]) %>% 
+   
+	tmp_shape <- ships %>% dplyr::filter(age >= input$age_f[1],age <= input$age_f[2]) %>% 
   	dplyr::filter(sex %in% input$sex_f) %>% 
-    dplyr::group_by(zipcode) %>% dplyr::summarise(diabetes = mean(target)) %>% 
-		merge(y = ., x = {shape}, by.y = 'zipcode', by.x = 'GEOID10', all.x = TRUE, all.y = FALSE) 
-		# %>% filter_at(vars(diabetes),all_vars(!is.na(.)))	
-	return(tmp_shape) }
+    dplyr::group_by(zipcode) %>% summarise(diabetes = mean(target)) %>% 
+		merge(y = ., x = {shape}, by.y = 'zipcode', by.x = 'GEOID10', all.x = TRUE, all.y = FALSE) %>%
+    dplyr::filter(Poverty.Percentage >= input$poverty_f[1],Poverty.Percentage <= input$poverty_f[2])
+	
+	return(tmp_shape)
 	})
 	
   output$map <- renderLeaflet({
 	ships_data <- map_data_react()
-        pal <- colorNumeric(
-  palette = "RdYlBu",
-  reverse=TRUE,
-  domain = ships_data$diabetes)
+  
+ 	if (all(is.na(ships_data$diabetes))) {
+	  ships_data %>%
+	    leaflet() %>% 
+	    addProviderTiles("Stamen.Toner") %>% 
+	    addPolygons(stroke = FALSE,
+	                fillColor = "aliceblue",
+	                fillOpacity = 0.5,
+	                smoothFactor = 0.2,
+	                layerId = ~ZCTA5CE10)
+	 } else {
+	   pal <- colorNumeric(
+	     palette = "RdYlBu",
+	     na.color = "#808080",
+	     reverse=TRUE,
+	     domain = ships_data$diabetes
+	   )
 	ships_data %>%
     leaflet() %>% 
       addProviderTiles("Stamen.Toner") %>% 
       addPolygons(stroke = FALSE,
-#                  fillColor = "aliceblue",
                   fillOpacity = 0.5,
                   smoothFactor = 0.2,
                   color = ~pal(diabetes),
                   layerId = ~ZCTA5CE10) %>%
-	    addLegend("bottomright", pal = pal, values = ~diabetes, title = "A1C > 9", opacity = 1)
+	    addLegend("bottomright", pal = pal, values = ~diabetes, title = "A1C > 9", opacity = 1) }
   })
   
-  # this is the fun part!
+  # add text in bar 
   observe({ 
     event <- input$map_shape_click
     ships_data <- map_data_react()
