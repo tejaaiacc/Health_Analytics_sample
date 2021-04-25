@@ -2,7 +2,7 @@
 
 Using the [MITRE Synthea FHIR dataset](https://synthea.mitre.org/) that is publicly available in GCP BigQuery. Perform query according to healhtcare measure or use case
 
-* Use case 1: Diabetes Hemoglobin Ac1 measure
+### Use case 1: Diabetes Hemoglobin Ac1 measure
   See https://ecqi.healthit.gov/ecqm/ep/2019/cms122v7
 
 Create 3 tables (csv files based on the query below)
@@ -86,6 +86,7 @@ FROM `bigquery-public-data.fhir_synthea.patient`
 
 Depending on use case, you may need to adjust query to obtain the resulting values. 
 
+### Use Case 2: High Blood Pressure
 For example, with blood pressure management:
 
 ```
